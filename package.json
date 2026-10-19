@@ -1,0 +1,53 @@
+{
+  "name": "dsh-latex",
+  "version": "0.1.0",
+  "description": "Renders LaTeX math in the DeepSeek Harness chat view and makes the model write $...$ / $$...$$ instead of fenced code blocks.",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./lib/client.js",
+    "./package.json": "./package.json"
+  },
+  "dsh": {
+    "engines": {
+      "dsh": ">=0.2.0-rc.2"
+    },
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "inject": [],
+      "platform": "web"
+    }
+  },
+  "files": [
+    "lib",
+    "cordis.patch.yml",
+    "README.md",
+    "README.zh.md",
+    "LICENSE"
+  ],
+  "keywords": [
+    "dsh",
+    "deepseek-harness",
+    "dsh-plugin",
+    "cordis",
+    "latex",
+    "katex",
+    "math"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "author": "Sue Yin",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sbVAN/dsh-latex.git"
+  },
+  "homepage": "https://github.com/sbVAN/dsh-latex#readme",
+  "bugs": {
+    "url": "https://github.com/sbVAN/dsh-latex/issues"
+  }
+}

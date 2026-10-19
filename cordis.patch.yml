@@ -1,0 +1,8 @@
+# dsh-latex bundle patch：把本插件作为一行插进 profile 的组合。
+#
+# 行名（name）必须是「包名」本身：DSH 的 client-module 扫描把行名解析成包根，
+# 带子路径的行名会被跳过。宿主半与浏览器半都挂在同一个包下，
+# 所以只需要这一行。
+- insert:
+    - id: latex
+      name: dsh-latex
