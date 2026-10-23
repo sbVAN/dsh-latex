@@ -88,6 +88,11 @@ The section is disposed with the plugin fiber, so hot reload cannot leave duplic
 - **No mhchem** — `\ce{}` / `\pu{}` still fail; the prompt routes them to `\mathrm{}`.
 - **No `conversation.chat.node` takeover** — replacing the assistant renderer means duplicating the whole message structure and breaks on upstream upgrades.
 - **No history rewriting** — the prompt constrains future output only; old sessions are covered by the browser half.
+- **A bare `|` in a table cell breaks the formula** — GFM reads it as a column separator, so `$\oint_{|z|=1}$` gets split across cells and renders as raw text. The prompt now requires `\vert` / `\lvert ... \rvert`; messages already sent cannot be repaired because the table was split at parse time.
+
+> Note: the browser half anchors on `.md-code-block` and reads the language from
+> the header banner, because the rendered code block carries no `language-*`
+> class on `pre`/`code`. See `lib/client.js` for the exact DOM contract.
 
 ## Rollback
 
