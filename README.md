@@ -50,6 +50,7 @@ After that the browser half can hot-reload through HMR when `hmr.root` covers th
     - id: latex
       name: dsh-latex
       config:
+        mode: auto
         strict: true
         compact: false
         locale: zh
@@ -59,7 +60,8 @@ After that the browser half can hot-reload through HMR when `hmr.root` covers th
 
 | Key | Default | Meaning |
 |---|---|---|
-| `enabled` | `true` | Disables the prompt section entirely (the browser half still runs) |
+| `mode` | `auto` | `auto` injects only after the conversation shows math (no tax on every chat); `always` injects in every session; `off` never injects |
+| `enabled` | `true` | Compatibility: `false` is equivalent to `mode: off` |
 | `locale` | `auto` | `zh` / `en` / `auto` (auto follows `DSH_LOCALE`, `LANG`, defaulting to Chinese) |
 | `strict` | `true` | `true` forbids fenced formulae; `false` only recommends |
 | `compact` | `false` | Shorter prompt, roughly 1/3 of the tokens |
@@ -70,15 +72,16 @@ After that the browser half can hot-reload through HMR when `hmr.root` covers th
 
 ### Host half (`lib/index.js`)
 
-Registers `ctx.systemPrompt.section({ name: 'dsh-latex:math-output', order, text })` with a contract covering inline `$...$`, display `$$...$$`, a ban on fenced formulae, the KaTeX-supported subset (`aligned` over `align`, `pmatrix`/`bmatrix`/`cases`, `\mathrm{}` over `\si{}`/`\pu{}`/`\ce{}`, no `\label`/`\tag`), CJK only inside `\text{}`, and splitting long derivations.
+With `mode: always` it registers a **global** `ctx.systemPrompt.section({ name: 'dsh-latex:math-output', order, text })`. With `mode: auto` (default) no global section is registered: it listens on `agent/pre-step`, and only after a user message carries a math signal (math delimiters, TeX commands, or keywords such as integral/matrix/equation) does it register a **scoped** section through that session's `agent.ctx` — the section follows that session and is disposed with it, so chats that never touch math pay nothing. The contract covers inline `$...$`, display `$$...$$`, a ban on fenced formulae, the KaTeX-supported subset (`aligned` over `align`, `pmatrix`/`bmatrix`/`cases`, `\mathrm{}` over `\si{}`/`\pu{}`/`\ce{}`, no `\label`/`\tag`), CJK only inside `\text{}`, and splitting long derivations.
 
-The section is disposed with the plugin fiber, so hot reload cannot leave duplicates. The rendered contract is written to `$DSH_HOME/cache/dsh-latex/prompt.txt`, mount diagnostics to `mounted.json`.
+In `always` mode the global section is disposed with the plugin fiber; in `auto` mode the scoped sections live with their sessions and are withdrawn on plugin reload. The rendered contract is written to `$DSH_HOME/cache/dsh-latex/prompt.txt`, mount diagnostics to `mounted.json`.
 
 ### Browser half (`lib/client.js`)
 
 - display-math scrolling and an error badge;
 - `pre > code.language-latex|tex` gets a preview below it, rendered with the shared `MarkdownText` (no bundled KaTeX), source folded by default;
 - toolbar with show/hide source and copy LaTeX;
+- **copy source**: a hover button on each display block copies the original TeX from KaTeX's MathML annotation (`annotation[encoding="application/x-tex"]`); selecting a rendered formula and pressing Ctrl+C yields that same source instead of the newline-heavy span text;
 - 300 ms debounce over a full scan, orphan cleanup, and root unmount when React replaces nodes.
 
 ## Limitations
@@ -88,6 +91,7 @@ The section is disposed with the plugin fiber, so hot reload cannot leave duplic
 - **No mhchem** — `\ce{}` / `\pu{}` still fail; the prompt routes them to `\mathrm{}`.
 - **No `conversation.chat.node` takeover** — replacing the assistant renderer means duplicating the whole message structure and breaks on upstream upgrades.
 - **No history rewriting** — the prompt constrains future output only; old sessions are covered by the browser half.
+- **`auto` is heuristic** — it keys off math syntax and keywords, so it can miss (e.g. you only paste code and ask for a fix) or fire early; use `mode: always` when a session must carry the contract from the first turn.
 - **A bare `|` in a table cell breaks the formula** — GFM reads it as a column separator, so `$\oint_{|z|=1}$` gets split across cells and renders as raw text. The prompt now requires `\vert` / `\lvert ... \rvert`; messages already sent cannot be repaired because the table was split at parse time.
 
 > Note: the browser half anchors on `.md-code-block` and reads the language from

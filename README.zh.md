@@ -52,6 +52,7 @@ New-Item -ItemType Junction `
     - id: latex
       name: dsh-latex
       config:
+        mode: auto
         strict: true
         compact: false
         locale: zh
@@ -61,7 +62,8 @@ New-Item -ItemType Junction `
 
 | 键 | 默认 | 含义 |
 |---|---|---|
-| `enabled` | `true` | 关掉后不注入任何提示词（浏览器半仍生效） |
+| `mode` | `auto` | `auto`：会话里出现数学话题才注入（不污染每个对话）；`always`：每个会话都注入；`off`：不注入 |
+| `enabled` | `true` | 兼容项：`false` 等价于 `mode: off` |
 | `locale` | `auto` | `zh` / `en` / `auto`（auto 跟随 `DSH_LOCALE`、`LANG`，默认中文） |
 | `strict` | `true` | `true` 明确禁止代码块写公式；`false` 只建议 |
 | `compact` | `false` | 精简版提示词，约 1/3 token |
@@ -72,7 +74,7 @@ New-Item -ItemType Junction `
 
 ### 宿主半（`lib/index.js`）
 
-通过 `ctx.systemPrompt.section({ name: 'dsh-latex:math-output', order, text })` 注入一段规范，内容覆盖：
+`mode: always` 时通过 `ctx.systemPrompt.section({ name: 'dsh-latex:math-output', order, text })` 注册一段**全局**规范；`mode: auto`（默认）不注册全局段，而是监听 `agent/pre-step`，用户消息里出现数学信号（`$...$`、`$$...$$`、`\frac`、`\begin{`、积分/矩阵/方程等词）后，才通过该会话的 `agent.ctx` 注册**作用域**段——只影响这个会话、随会话释放，没聊数学的对话不付这段 token。规范内容覆盖：
 
 - 行内 `$...$`、独立 `$$...$$`（前后空行）；
 - 禁止 `latex` / `tex` / `math` 代码块包公式；
@@ -80,7 +82,7 @@ New-Item -ItemType Junction `
 - 中文只放在 `\text{}` 里或公式外；
 - 长推导拆块；代码里的表达式留在代码块。
 
-段注册随插件 fiber dispose，热重载不会留下重复段。实际注入的文本会写到
+段注册的生命周期：`always` 模式的全局段随插件 fiber dispose；`auto` 模式注册的作用域段随会话释放，插件热重载时也会主动收回。实际注入的文本会写到
 `$DSH_HOME/cache/dsh-latex/prompt.txt`，挂载信息（pid、配置、长度）写到同目录的 `mounted.json`。
 
 ### 浏览器半（`lib/client.js`）
@@ -91,6 +93,7 @@ New-Item -ItemType Junction `
   `pre.textContent` 会把多行公式粘成一行）。识别到 `latex` / `tex` 后在代码块后插入预览，
   复用统一基座里的 `MarkdownText` 渲染 `$$...$$`（不额外打包 KaTeX），源码默认折叠；
 - **工具条**：显示/隐藏源码、复制 LaTeX；
+- **复制源码**：块级公式右上角 hover 出现「复制 LaTeX」，复制的是 KaTeX MathML 注记（`annotation[encoding="application/x-tex"]`）里的原始 TeX；选中渲染后的公式按 Ctrl+C 同样得到原始源码，而不是一堆带换行的 span 文本；
 - 300ms 防抖 + 全量扫描，避开流式每个 token 的抖动；React 重渲染冲掉节点时自动补挂，并对断开的 root 做 unmount；
 - 任何共享模块（react / react-dom / primitives）缺失都只降级为「只注入 CSS」，不会让整页 boot 失败。
 
@@ -124,6 +127,7 @@ New-Item -ItemType Junction `
 - **不启用 mhchem**：`\ce{}` / `\pu{}` 仍会报错，提示词里要求改用 `\mathrm{}`；要真支持化学式需要自带 KaTeX + mhchem 扩展。
 - **不接管 `conversation.chat.node`**：覆盖 assistant 渲染器要复刻整条消息结构，上游一升级就坏；这里只在 DOM 层做加法。
 - **不改写模型输出历史**：提示词只约束后续输出，旧会话里的代码块靠浏览器半兜底显示。
+- **auto 模式是启发式**：靠数学语法与关键词判断，可能漏判（例如只贴一段代码让助手改公式）或误判；要求一个会话从头到尾都带规范时配 `mode: always`。
 - **表格里的裸 `|` 会被 GFM 切碎**：表格单元格中的 `$...$` 只要含一个 `|`，Markdown 就会把它当成列分隔符，公式被切到不同单元格、渲染成原文。提示词已要求改写成 `\vert` / `\lvert ... \rvert`；已经发出去的历史消息无法自动恢复（表格结构在解析时就已经拆开了）。
 
 ## 回滚
