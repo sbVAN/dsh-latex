@@ -93,6 +93,7 @@ In `always` mode the global section is disposed with the plugin fiber; in `auto`
 - **No history rewriting** — the prompt constrains future output only; old sessions are covered by the browser half.
 - **`auto` is heuristic** — it keys off math syntax and keywords, so it can miss (e.g. you only paste code and ask for a fix) or fire early; use `mode: always` when a session must carry the contract from the first turn.
 - **A bare `|` in a table cell breaks the formula** — GFM reads it as a column separator, so `$\oint_{|z|=1}$` gets split across cells and renders as raw text. The prompt now requires `\vert` / `\lvert ... \rvert`; messages already sent cannot be repaired because the table was split at parse time.
+- **Parse failures no longer flood the page**: when a whole paragraph ends up inside one formula and KaTeX rejects it, the error block collapses to three lines with click-to-expand; short errors keep the compact badge.
 
 > Note: the browser half anchors on `.md-code-block` and reads the language from
 > the header banner, because the rendered code block carries no `language-*`
