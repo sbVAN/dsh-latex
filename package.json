@@ -1,6 +1,6 @@
 {
   "name": "dsh-latex",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "Renders LaTeX math in the DeepSeek Harness chat view and makes the model write $...$ / $$...$$ instead of fenced code blocks.",
   "type": "module",
   "main": "lib/index.js",
