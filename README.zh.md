@@ -76,11 +76,12 @@ New-Item -ItemType Junction `
 
 `mode: always` 时通过 `ctx.systemPrompt.section({ name: 'dsh-latex:math-output', order, text })` 注册一段**全局**规范；`mode: auto`（默认）不注册全局段，而是监听 `agent/pre-step`，用户消息里出现数学信号（`$...$`、`$$...$$`、`\frac`、`\begin{`、积分/矩阵/方程等词）后，才通过该会话的 `agent.ctx` 注册**作用域**段——只影响这个会话、随会话释放，没聊数学的对话不付这段 token。规范内容覆盖：
 
-- 行内 `$...$`、独立 `$$...$$`（前后空行）；
+- 行内 `$...$`、独立 `$$...$$`（**整块写在一行**、单独占一段、前后空行；跨行会导致定界符配对失败）；
 - 禁止 `latex` / `tex` / `math` 代码块包公式；
 - KaTeX 支持子集：`aligned` 而非 `align`；`pmatrix`/`bmatrix`/`cases`；`\mathrm{}` 而非 `\si{}` / `\pu{}` / `\ce{}`；不用 `\label`/`\tag`/`\eqref`；
 - 中文只放在 `\text{}` 里或公式外；
-- 长推导拆块；代码里的表达式留在代码块。
+- 长推导拆块；代码里的表达式留在代码块；
+- 表格单元格内绝对值用 `\lvert ... \rvert`（不能用 `|` 或 `\left|`），单元格内不用 `&`，含竖线的公式移到表格外。
 
 段注册的生命周期：`always` 模式的全局段随插件 fiber dispose；`auto` 模式注册的作用域段随会话释放，插件热重载时也会主动收回。实际注入的文本会写到
 `$DSH_HOME/cache/dsh-latex/prompt.txt`，挂载信息（pid、配置、长度）写到同目录的 `mounted.json`。
